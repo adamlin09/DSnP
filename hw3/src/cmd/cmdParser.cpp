@@ -11,6 +11,8 @@
 #include <cstdlib>
 #include "util.h"
 #include "cmdParser.h"
+#include <dirent.h>
+#include <algorithm>
 
 using namespace std;
 
@@ -326,6 +328,145 @@ void
 CmdParser::listCmd(const string& str)
 {
    // TODO...
+   // 1.
+   if (str == "" || str.find_first_not_of(" ", 0) == string::npos) {
+      CmdMap::iterator iter; int count = 0;
+      cout << endl;
+      for (iter = _cmdMap.begin(); iter != _cmdMap.end(); iter++) {
+         string cmd = iter->first + iter->second->getOptCmd();
+         cout << setw(12) << left << cmd;
+         ++count;
+         if (count == 5) {
+            cout << endl;
+            count = 0;
+         }
+      }
+      _tabPressCount = 0;
+      reprintCmd();
+   }
+   else {
+      //2.
+      CmdMap cmds;
+      string upper_str; size_t upper_str_len;
+      size_t pos = myStrGetTok(str, upper_str);
+      for (size_t i = 0; i < upper_str_len; ++i) {
+         upper_str[i] = toupper(str[i]);
+         upper_str_len = upper_str.size();
+      }
+      for (CmdMap::iterator iter = _cmdMap.begin(); iter != _cmdMap.end(); ++iter) {   //find
+         string cmd = iter->first; 
+         cmd = cmd + iter->second->getOptCmd(); size_t l = cmd.size();
+         if (l < upper_str_len) break;
+         cmd.resize(upper_str_len);
+         for (size_t i = 0; i < upper_str_len; ++i) {
+            cmd[i] = toupper(cmd[i]);
+         }
+         if (upper_str == cmd)   cmds.insert(CmdRegPair(iter->first, iter->second));
+      }
+      size_t cmds_num = cmds.size();
+      if (cmds_num > 1) {
+         int count = 0;
+         cout << endl;
+         for (CmdMap::iterator iter = cmds.begin(); iter != cmds.end(); ++iter) {
+            cout << setw(12) << left << iter->first + iter->second->getOptCmd();
+            ++count;
+            if (count == 5) {
+               cout << endl;
+               count = 0;
+            }
+         }
+         reprintCmd();
+         _tabPressCount = 0;
+      }
+      // 4.
+      if (cmds_num == 0) {
+         mybeep();
+         _tabPressCount = 0;
+      }
+      // 3.
+      if (cmds_num == 1) {
+         string cmd = cmds.begin()->first + cmds.begin()->second->getOptCmd();
+         size_t cmd_len = cmd.size(), str_len = str.size();
+         if (str_len <= cmd_len) {
+            _tabPressCount = 1;
+            for (size_t i = upper_str_len; i < cmd_len; ++i)
+               insertChar(cmd[i]);
+            insertChar(' ');
+         }
+         else {
+            if (_tabPressCount <2)  _tabPressCount = 2;
+         }
+      }
+      // 5.
+      if (_tabPressCount == 2) {
+         cout << endl;
+         cmds.begin()->second->usage(cout);
+         reprintCmd();
+      }
+      // 6.
+      else if (_tabPressCount > 2) {
+         vector<string> files;
+         DIR* dir = opendir(".");
+         struct dirent* entry;
+         
+         while ((entry = readdir(dir)) != NULL) {
+            string file_name = entry->d_name;
+            if (file_name == "." || file_name == "..")   continue;
+            files.push_back(file_name);
+         }
+         sort(files.begin(), files.end()); size_t f_size = files.size(); int count = 0;
+         size_t j = 0; string prefix;
+         while (true) {                         //prefix
+            char c; size_t num = 1;
+            if (j < files[0].size()) {
+               c = files[0][j]; 
+            }
+            else  break;
+            for (size_t i = 1; i < f_size; ++i) {
+               if (j >= files[i].size()) break;
+               if (c == files[i][j])   ++num;
+            }
+            if (num == f_size) {
+               prefix += c;
+               ++j;
+            }
+            else
+               break;
+         }
+         string str_prefix;
+         while (true) {
+            str_prefix = "";
+            pos = myStrGetTok(str, str_prefix, pos);
+            if (pos == string::npos)   break;
+         }
+         // 6.1.1
+         if (str_prefix.empty()) {
+            if (prefix.empty()) {
+               cout << endl;
+               for (size_t i = 0; i < f_size; ++i) {
+                  cout << setw(16) << left << files[i];
+                  ++count;
+                  if (count == 5) {
+                     cout << endl;
+                     count = 0;
+                  }
+               }
+               reprintCmd();
+            }
+            else {
+               size_t p_size = prefix.size();
+               for (size_t i = 0; i < p_size; ++i)
+                  insertChar(prefix[i]);
+               if (f_size == 1)  insertChar(' ');
+               mybeep();
+            }
+         }
+         else {
+            
+         }
+      }
+   }
+   
 }
 
 // cmd is a copy of the original input

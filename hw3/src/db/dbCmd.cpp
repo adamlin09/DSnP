@@ -44,6 +44,10 @@ DBAppendCmd::exec(const string& option)
 {
    // TODO...
    // check option
+   if (!dbjson) {
+      cerr << "Error: DB is not created yet!!" << endl;
+      return CMD_EXEC_ERROR;
+   }
    vector<string> tokens;
    if (!lexOptions(option, tokens, 2)) {
       return CMD_EXEC_ERROR;
